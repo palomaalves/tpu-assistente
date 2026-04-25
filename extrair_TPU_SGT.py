@@ -220,6 +220,7 @@ def main():
         except ET.ParseError:
             pass
 
+    extraidas = []
     for tipo, (nome, caminho) in TABELAS.items():
         global TIPO_ITEM
         TIPO_ITEM = tipo
@@ -229,19 +230,24 @@ def main():
         percorrer_arvore(0, 1, [], [], registros, total)
 
         if not registros:
-            print(f"  Nenhum registro encontrado.")
+            print(f"  Nenhum registro encontrado — servidor indisponivel.")
             continue
 
         print(f"\n  Total {nome.lower()}: {len(registros)}")
         salvar_json(registros, caminho)
         salvar_excel(registros, caminho, nome)
+        extraidas.append(nome)
 
     print(f"\n{'=' * 60}")
-    print(f"Extracao concluida! Arquivos em: {DOCS}")
+    if not extraidas:
+        print("AVISO: Nenhuma tabela foi extraida. Servidor CNJ indisponivel.")
+    else:
+        print(f"Extracao concluida! Tabelas salvas: {', '.join(extraidas)}")
+        print(f"Arquivos em: {DOCS}")
+        print("\nProximo passo — no Assistente TPU (Artifact):")
+        print("  Aba 'Carregar Tabelas' > Upload manual")
+        print("  Selecione os 3 arquivos .json gerados")
     print("=" * 60)
-    print("\nProximo passo — no Assistente TPU (Artifact):")
-    print("  Aba 'Carregar Tabelas' > Upload manual")
-    print("  Selecione os 3 arquivos .json gerados")
 
 
 if __name__ == "__main__":
