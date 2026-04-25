@@ -32,7 +32,7 @@ from openpyxl.utils import get_column_letter
 
 # Garante saída UTF-8 no terminal Windows (evita UnicodeEncodeError com caracteres acentuados)
 if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 SOAP_URL  = "https://www.cnj.jus.br/sgt/sgt_ws.php"
 NAMESPACE = "https://www.cnj.jus.br/sgt/sgt_ws.php"
