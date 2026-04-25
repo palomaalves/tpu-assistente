@@ -16,13 +16,21 @@ Saída em Documentos:
     movimentos_sgt_cnj.json    <- faz upload deste no Artifact
 """
 
-import time, json, requests, xml.etree.ElementTree as ET
+import sys
+import time
+import json
+import requests
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 SOAP_URL  = "https://www.cnj.jus.br/sgt/sgt_ws.php"
 NAMESPACE = "https://www.cnj.jus.br/sgt/sgt_ws.php"
 DELAY     = 0.20
 TIMEOUT   = 30
+RETRIES   = 5
 
 DOCS = Path.home() / "Documents"
 DOCS.mkdir(exist_ok=True)
@@ -54,15 +62,22 @@ def _chamar(action, corpo):
         "Content-Type": "text/xml; charset=utf-8",
         "SOAPAction":   f"{NAMESPACE}#{action}",
     }
-    try:
-        resp = requests.post(SOAP_URL,
-            data=_envelope(action, corpo).encode("utf-8"),
-            headers=headers, timeout=TIMEOUT)
-        time.sleep(DELAY)
-        return resp.text
-    except requests.RequestException as e:
-        print(f"  Erro: {e}")
-        return None
+    for tentativa in range(1, RETRIES + 1):
+        try:
+            resp = requests.post(SOAP_URL,
+                data=_envelope(action, corpo).encode("utf-8"),
+                headers=headers, timeout=TIMEOUT)
+            resp.raise_for_status()
+            time.sleep(DELAY)
+            return resp.content
+        except requests.RequestException as e:
+            if tentativa < RETRIES:
+                espera = 2 ** tentativa
+                print(f"  Tentativa {tentativa}/{RETRIES} falhou ({e}). Aguardando {espera}s...", flush=True)
+                time.sleep(espera)
+            else:
+                print(f"  Erro após {RETRIES} tentativas em {action}: {e}")
+                return None
 
 
 def _texto(el):
@@ -118,8 +133,12 @@ def percorrer_arvore(seq_item, nivel, nomes, codigos, registros, total):
         if total[0] % 50 == 0:
             print(f"  {total[0]} itens... nivel {nivel}: {nome[:50]}", flush=True)
 
-        if filho["tem_filhos"] and cod.isdigit():
-            percorrer_arvore(int(cod), nivel + 1,
+        if filho["tem_filhos"]:
+            try:
+                seq_int = int(cod)
+            except (ValueError, TypeError):
+                continue
+            percorrer_arvore(seq_int, nivel + 1,
                              nomes + [nome], codigos + [cod],
                              registros, total)
 
